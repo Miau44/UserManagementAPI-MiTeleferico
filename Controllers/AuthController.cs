@@ -1,4 +1,6 @@
 ﻿using Azure.Core;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,8 +8,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using System.Threading.Tasks;
 using System.Text;
+using System.Threading.Tasks;
 using UserManagementAPI.Data;
 using UserManagementAPI.DTOs;
 using UserManagementAPI.Models;
@@ -23,13 +25,16 @@ namespace UserManagementAPI.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
-        public AuthController(ApplicationDbContext context, IConfiguration config, EmailService emailService)
+        private readonly Cloudinary _cloudinary;
+
+        public AuthController(ApplicationDbContext context, IConfiguration config, EmailService emailService, Cloudinary cloudinary)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
-
+            _cloudinary = cloudinary;
         }
+
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto dto)
@@ -40,13 +45,25 @@ namespace UserManagementAPI.Controllers
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
                 return BadRequest("TAAAAAAARDE, El correo ya está registrado :b");
 
+
+            var defaultRole = await _context.Roles.FirstOrDefaultAsync(r => r.Rol == "User");
+            if (defaultRole == null)
+            {
+                return StatusCode(500, "Rol por defecto 'User' no existe en la base de datos.");
+            }
+
             var user = new User
             {
                 Username = dto.Username,
                 Email = dto.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                 RoleId = defaultRole.Id
             };
+            if (dto.ProfilePicture != null)
+            {
+                user.ProfilePictureUrl = UploadProfilePicture(dto.ProfilePicture);
+            }
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
@@ -56,13 +73,42 @@ namespace UserManagementAPI.Controllers
         }
         
 
+        private string? UploadProfilePicture(IFormFile? file)
+        {
+            if (file == null || file.Length == 0)
+                return null;
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+            var extension = Path.GetExtension(file.FileName).ToLower();
+
+            if (!allowedExtensions.Contains(extension))
+                throw new Exception("Formato no permitido. Solo JPG y PNG.");
+
+            if (file.Length > 2 * 1024 * 1024)
+                throw new Exception("La imagen no debe superar los 2 MB.");
+
+            var uploadParams = new ImageUploadParams()
+            {
+                File = new FileDescription(file.FileName, file.OpenReadStream()),
+                Folder = "profile-pictures"
+            };
+
+            var uploadResult = _cloudinary.Upload(uploadParams);
+            return uploadResult.SecureUrl.ToString();
+        }
+
+
+
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            var user = await _context.Users
+                .Include(u => u.Role) // 🔹 Cargar el rol
+                .FirstOrDefaultAsync(u => u.Email == dto.Email);
+
 
             if (user == null)
                 return Unauthorized("Credenciales inválidas, PICHOON.");
@@ -106,14 +152,7 @@ namespace UserManagementAPI.Controllers
                 token = token
             });
         }
-        [Authorize]
-        [HttpGet("perfil")]
-        public IActionResult GetPerfil()
-        {
-
-            var userName = User.Identity?.Name ?? "Invitado";
-            return Ok(new { mensaje = $"Buenazooo. Bienvenido {userName}, este es tu perfil mi causa 🍑 ." });
-        }
+        
 
 
         [HttpPost("forgot-password")]
@@ -184,11 +223,12 @@ namespace UserManagementAPI.Controllers
             var expiresIn = jwtConfig["ExpiresInMinutes"] ?? throw new InvalidOperationException("ExpiresInMinutes no configurado.");
 
             var claims = new[]
-            {
-        new Claim(ClaimTypes.Name, user.Username),
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Email, user.Email)
-    };
+                {
+                    new Claim(ClaimTypes.Name, user.Username),
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim("Role", user.Role.Rol) // <-- importante
+                };
 
             var token = new JwtSecurityToken(
                 issuer: jwtConfig["Issuer"],
@@ -202,4 +242,5 @@ namespace UserManagementAPI.Controllers
         }
 
     }
+    
 }

@@ -4,23 +4,39 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using UserManagementAPI.Data;
 using UserManagementAPI.Services;
+using CloudinaryDotNet;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Agregar conexión a la base de datos SQL Server
+// ============================
+// Configuración de Base de Datos
+// ============================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Configurar JWT Authentication
+// ============================
+// Configuración de Cloudinary
+// ============================
+var cloudName = builder.Configuration["Cloudinary:CloudName"];
+var apiKey = builder.Configuration["Cloudinary:ApiKey"];
+var apiSecret = builder.Configuration["Cloudinary:ApiSecret"];
+
+var cloudinaryAccount = new Account(cloudName, apiKey, apiSecret);
+var cloudinary = new Cloudinary(cloudinaryAccount);
+
+builder.Services.AddSingleton(cloudinary);
+
+// ============================
+// Configuración de Servicios
+// ============================
+builder.Services.AddScoped<EmailService>();
+
+// ============================
+// Configuración de JWT Authentication
+// ============================
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var keyString = jwtSettings["Key"] ?? throw new Exception("La clave JWT no está configurada");
-if (string.IsNullOrEmpty(keyString))
-{
-    throw new Exception("La clave JWT (Jwt:Key) no está configurada en appsettings.json");
-}
 var key = Encoding.UTF8.GetBytes(keyString);
-
-builder.Services.AddScoped<EmailService>();
 
 builder.Services.AddAuthentication(options =>
 {
@@ -35,24 +51,24 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(key)
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        RoleClaimType = "Role" // Asegura que el claim de rol se mapea correctamente
     };
+
+    // Mensaje personalizado para usuarios no autorizados
     options.Events = new JwtBearerEvents
     {
         OnChallenge = context =>
         {
-            // Evita que el middleware agregue su respuesta por defecto
-            context.HandleResponse();
-
+            context.HandleResponse(); // Evita la respuesta por defecto
             context.Response.StatusCode = 401;
             context.Response.ContentType = "application/json";
 
             var result = System.Text.Json.JsonSerializer.Serialize(new
             {
-                message = "No estas autorizado 🍆. Por favor mi causaa, inicia sesión de una vez peeee 😠."
+                message = "No estás autorizado 🍆. Por favor inicia sesión 😠."
             });
 
             return context.Response.WriteAsync(result);
@@ -60,13 +76,16 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Agrega controladores y Swagger
+// ============================
+// Configuración de Controladores y Swagger
+// ============================
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "UserManagementAPI", Version = "v1" });
 
+    // Configuración de JWT en Swagger
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -92,21 +111,39 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+
 var app = builder.Build();
 
-// Configurar el pipeline HTTP
+// ============================
+// Seed de Roles Iniciales
+// ============================
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    // Verificamos si ya existen roles
+    if (!context.Roles.Any())
+    {
+        context.Roles.AddRange(
+            new UserManagementAPI.Models.Role { Rol = "Admin" },
+            new UserManagementAPI.Models.Role { Rol = "User" }
+        );
+
+        context.SaveChanges();
+    }
+}
+// ============================
+// Configuración del Pipeline HTTP
+// ============================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-
-
 app.UseHttpsRedirection();
 
-app.UseAuthentication(); // ¡Muy importante que esté antes de UseAuthorization!
-
+app.UseAuthentication(); // Debe ir antes de UseAuthorization
 app.UseAuthorization();
 
 app.MapControllers();
