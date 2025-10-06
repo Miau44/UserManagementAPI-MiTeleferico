@@ -8,6 +8,7 @@ using UserManagementAPI.Data;
 using UserManagementAPI.DTOs;
 using UserManagementAPI.Models;
 using System.IO;
+using UserManagementAPI.Services;
 
 namespace UserManagementAPI.Controllers
 {
@@ -18,48 +19,56 @@ namespace UserManagementAPI.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly Cloudinary _cloudinary;
+        private readonly AuditService _auditService;
 
-        public AdminController(ApplicationDbContext context, Cloudinary cloudinary)
+
+        public AdminController(ApplicationDbContext context, Cloudinary cloudinary, AuditService auditService)
         {
             _context = context;
             _cloudinary = cloudinary;
+            _auditService = auditService;
         }
 
         // GET: api/Admin/users?page=1&pageSize=20&q=search
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? q = null)
         {
-            if (page <= 0) page = 1;
-            if (pageSize <= 0) pageSize = 20;
+            // GET: api/Admin/users?page=1&pageSize=20&q=search
+                if (page <= 0) page = 1;
+                if (pageSize <= 0) pageSize = 20;
 
-            var query = _context.Users.Include(u => u.Role).AsQueryable();
+                var query = _context.Users
+                    .Include(u => u.Role)
+                    .Where(u => u.Status == "Activo")   // 🔹 Solo usuarios activos
+                    .AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(q))
-            {
-                q = q.Trim().ToLower();
-                query = query.Where(u => u.Username.ToLower().Contains(q) || u.Email.ToLower().Contains(q));
-            }
-
-            var total = await query.CountAsync();
-            var users = await query
-                .OrderBy(u => u.Id)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(u => new AdminUserDto
+                if (!string.IsNullOrWhiteSpace(q))
                 {
-                    Id = u.Id,
-                    Username = u.Username,
-                    Email = u.Email,
-                    RoleId = u.RoleId,
-                    RoleName = u.Role.Rol,
-                    Status = u.Status,
-                    ProfilePictureUrl = u.ProfilePictureUrl,
-                    CreatedAt = u.CreatedAt,
-                    UpdatedAt = u.UpdatedAt
-                })
-                .ToListAsync();
+                    q = q.Trim().ToLower();
+                    query = query.Where(u => u.Username.ToLower().Contains(q) || u.Email.ToLower().Contains(q));
+                }
 
-            return Ok(new { data = users, total, page, pageSize });
+                var total = await query.CountAsync();
+                var users = await query
+                    .OrderBy(u => u.Id)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(u => new AdminUserDto
+                    {
+                        Id = u.Id,
+                        Username = u.Username,
+                        Email = u.Email,
+                        RoleId = u.RoleId,
+                        RoleName = u.Role.Rol,
+                        Status = u.Status,
+                        ProfilePictureUrl = u.ProfilePictureUrl,
+                        CreatedAt = u.CreatedAt,
+                        UpdatedAt = u.UpdatedAt
+                    })
+                    .ToListAsync();
+
+                return Ok(new { data = users, total, page, pageSize });
+
         }
 
         // GET: api/Admin/users/5
@@ -82,6 +91,7 @@ namespace UserManagementAPI.Controllers
                 ProfilePictureUrl = user.ProfilePictureUrl,
                 CreatedAt = user.CreatedAt,
                 UpdatedAt = user.UpdatedAt
+
             };
 
             return Ok(dto);
@@ -193,30 +203,60 @@ namespace UserManagementAPI.Controllers
         [HttpDelete("users/{id:int}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
-            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
-            if (user == null) return NotFound();
+                var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
+                if (user == null) return NotFound();
 
-            var currentAdminId = GetCurrentAdminId();
+                var currentAdminId = GetCurrentAdminId();
 
-            // evitar eliminarse a sí mismo
-            if (user.Id == currentAdminId)
-                return BadRequest("No puedes eliminar tu propia cuenta.");
+                if (user.Id == currentAdminId)
+                    return BadRequest("No puedes eliminar tu propia cuenta.");
 
-            // evitar borrar último admin
-            if (user.Role != null && user.Role.Rol == "Admin")
+                if (user.Role != null && user.Role.Rol == "Admin")
+                {
+                    var adminCount = await _context.Users
+                        .CountAsync(u => u.RoleId == user.RoleId && u.Status == "Activo");
+                    if (adminCount <= 1)
+                        return BadRequest("No se puede desactivar el último administrador.");
+                }
+
+                user.Status = "Inactivo"; // Soft delete
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+
+                await AddAuditAsync(
+                    userId: currentAdminId,
+                    action: "SoftDeleteUser",
+                    description: $"Admin desactivó usuario Id:{user.Id}, Email:{user.Email}"
+                );
+
+                return Ok("Usuario desactivado correctamente.");
+
+        }
+
+        [ApiController]
+        [Route("api/admin")]
+        [Authorize(Roles = "Admin")]
+        public class AdminLogsController : ControllerBase
+        {
+            private readonly ApplicationDbContext _context;
+
+            public AdminLogsController(ApplicationDbContext context)
             {
-                var adminCount = await _context.Users.CountAsync(u => u.RoleId == user.RoleId);
-                if (adminCount <= 1)
-                    return BadRequest("No se puede eliminar el último administrador.");
+                _context = context;
             }
 
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
+            [HttpGet("logs")]
+            public async Task<IActionResult> GetLogs()
+            {
+                var logs = await _context.AuditLogs
+                    .OrderByDescending(l => l.Timestamp)
+                    .Take(100)
+                    .ToListAsync();
 
-            await AddAuditAsync(userId: currentAdminId, action: "DeleteUser", description: $"Admin eliminó usuario Id:{user.Id}, Email:{user.Email}");
-
-            return Ok("Usuario eliminado correctamente.");
+                return Ok(logs);
+            }
         }
+
 
         // --------- Helpers ---------
         private int GetCurrentAdminId()
@@ -271,5 +311,6 @@ namespace UserManagementAPI.Controllers
                 // no bloquear operación por fallo de auditoría
             }
         }
+
     }
 }

@@ -6,6 +6,7 @@ using System.Security.Claims;
 using UserManagementAPI.Data;
 using UserManagementAPI.DTOs;
 using UserManagementAPI.Models;
+using UserManagementAPI.Services;
 
 namespace UserManagementAPI.Controllers
 {
@@ -16,12 +17,14 @@ namespace UserManagementAPI.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly Cloudinary _cloudinary;
+        private readonly AuditService _auditService;
 
-        public ProfileController(ApplicationDbContext context, IWebHostEnvironment env, Cloudinary cloudinary)
+        public ProfileController(ApplicationDbContext context, IWebHostEnvironment env, Cloudinary cloudinary, AuditService auditService)
         {
             _context = context;
             _env = env;
             _cloudinary = cloudinary;
+            _auditService = auditService;
         }
 
         private string? UploadProfilePicture(IFormFile? file)
@@ -65,11 +68,11 @@ namespace UserManagementAPI.Controllers
 
             return Ok(new
             {
-                mensaje = $"Buenazooo. Bienvenido {userName}, este es tu perfil mi causa 🍑 .",
-                user.Username,
-                user.Email,
-                user.Status,
-                user.ProfilePictureUrl
+                mensaje = $"Buenazooo. Bienvenido {user.Username}, este es tu perfil mi causa 🍑 .",
+                username = user.Username,
+                email = user.Email,
+                status = user.Status,
+                profilePictureUrl = user.ProfilePictureUrl
             });
         }
 
@@ -89,8 +92,8 @@ namespace UserManagementAPI.Controllers
             if (!string.IsNullOrWhiteSpace(dto.Username))
                 user.Username = dto.Username;
 
-            if (!string.IsNullOrWhiteSpace(dto.Status))
-                user.Status = dto.Status;
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+                user.Email = dto.Email;
 
             // Manejo de foto en Cloudinary
             if (dto.ProfilePicture != null && dto.ProfilePicture.Length > 0)
@@ -122,8 +125,26 @@ namespace UserManagementAPI.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            await _auditService.LogAsync(user.Id, "UpdateProfile", $"Usuario {user.Username} actualizó su perfil");
+
             return Ok("Perfil actualizado correctamente.");
         }
+        private async Task AddAuditAsync(int? userId, string action, string description)
+        {
+            if (_context.Database.CanConnect())
+            {
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = userId,
+                    Action = action,
+                    Description = description,
+                    Timestamp = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+            }
+        }
+
 
     }
 }

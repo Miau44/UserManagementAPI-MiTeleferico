@@ -49,6 +49,33 @@ namespace UserManagementAPI.Migrations
                     b.ToTable("AuditLogs");
                 });
 
+            modelBuilder.Entity("UserManagementAPI.Models.Estacion", b =>
+                {
+                    b.Property<int>("EstacionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EstacionId"));
+
+                    b.Property<double>("Latitud")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Linea")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("Longitud")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("EstacionId");
+
+                    b.ToTable("Estaciones");
+                });
+
             modelBuilder.Entity("UserManagementAPI.Models.LoginAttempt", b =>
                 {
                     b.Property<int>("Id")
@@ -129,6 +156,9 @@ namespace UserManagementAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Calle")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -136,17 +166,29 @@ namespace UserManagementAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("EstacionAsignada")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("FailedLoginAttempts")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("Latitud")
+                        .HasColumnType("float");
+
+                    b.Property<string>("LineaAsignada")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("LockoutEnd")
                         .HasColumnType("datetime2");
 
+                    b.Property<double?>("Longitud")
+                        .HasColumnType("float");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ProfileImage")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ProfilePictureUrl")
@@ -165,11 +207,31 @@ namespace UserManagementAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ZonaSeleccionada")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("RoleId");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("UserManagementAPI.Models.Zona", b =>
+                {
+                    b.Property<int>("ZonaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ZonaId"));
+
+                    b.Property<string>("NombreZona")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("ZonaId");
+
+                    b.ToTable("Zonas");
                 });
 
             modelBuilder.Entity("UserManagementAPI.Models.PasswordResetToken", b =>

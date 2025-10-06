@@ -26,13 +26,16 @@ namespace UserManagementAPI.Controllers
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
         private readonly Cloudinary _cloudinary;
+        private readonly AuditService _auditService;
 
-        public AuthController(ApplicationDbContext context, IConfiguration config, EmailService emailService, Cloudinary cloudinary)
+        public AuthController(ApplicationDbContext context, IConfiguration config, EmailService emailService, Cloudinary cloudinary, AuditService auditService)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
             _cloudinary = cloudinary;
+            _auditService = auditService;
+        
         }
 
 
@@ -58,12 +61,9 @@ namespace UserManagementAPI.Controllers
                 Email = dto.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
                 CreatedAt = DateTime.UtcNow,
-                 RoleId = defaultRole.Id
+                RoleId = defaultRole.Id
             };
-            if (dto.ProfilePicture != null)
-            {
-                user.ProfilePictureUrl = UploadProfilePicture(dto.ProfilePicture);
-            }
+            
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
@@ -133,6 +133,9 @@ namespace UserManagementAPI.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+
+                await _auditService.LogAsync(null, "LoginFailed", $"Intento fallido para email: {dto.Email}");
+
                 return Unauthorized("Credenciales inválidas, PICHOON.");
             }
 
@@ -144,15 +147,17 @@ namespace UserManagementAPI.Controllers
 
             // ✅ Generar el token usando tu función
             var token = GenerateJwtToken(user);
-
+            await _auditService.LogAsync(user.Id, "LoginSuccess", $"Usuario {user.Username} inició sesión correctamente");
             // ✅ Retornar el token como parte de la respuesta
             return Ok(new
             {
                 message = "Inicio de sesión exitoso mi king 👑",
                 token = token
+
             });
+            
+
         }
-        
 
 
         [HttpPost("forgot-password")]
@@ -177,17 +182,24 @@ namespace UserManagementAPI.Controllers
             _context.PasswordResetTokens.Add(resetToken);
             await _context.SaveChangesAsync();
 
-            var resetLink = $"{dto.ClientAppUrl}?token={token}&email={user.Email}";
+            // Codificar token para URL
+            var resetLink = $"{dto.ClientAppUrl}?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(user.Email)}";
+
             await _emailService.SendEmailAsync(user.Email, "Recuperación de contraseña",
                 $"Haz clic en el siguiente enlace para restablecer tu contraseña: {resetLink}");
+
+            await _auditService.LogAsync(user.Id, "PasswordResetRequest", $"Usuario {user.Username} solicitó recuperación de contraseña");
 
             return Ok("Se envió un enlace de recuperación al correo.");
         }
 
 
+
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
         {
+            
+
             var reset = await _context.PasswordResetTokens
                 .Include(r => r.User)
                 .FirstOrDefaultAsync(r => r.Token == dto.Token && !r.IsUsed && r.Expiration > DateTime.UtcNow);
@@ -195,10 +207,15 @@ namespace UserManagementAPI.Controllers
             if (reset == null)
                 return BadRequest("Token inválido o expirado.");
 
+            var user = reset.User; // <-- aquí declaras 'user'
+
             reset.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
             reset.IsUsed = true;
 
             await _context.SaveChangesAsync();
+
+            await _auditService.LogAsync(user.Id, "PasswordReset", $"Usuario {user.Username} actualizó su contraseña");
+
             return Ok("Contraseña actualizada con éxito.");
         }
 
@@ -240,7 +257,22 @@ namespace UserManagementAPI.Controllers
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+        private async Task AddAuditAsync(int? userId, string action, string description)
+        {
+            if (_context.Database.CanConnect())
+            {
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = userId,
+                    Action = action,
+                    Description = description,
+                    Timestamp = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+            }
+        }
+
 
     }
-    
+
 }

@@ -19,6 +19,5 @@ namespace UserManagementAPI.DTOs
             ErrorMessage = "La contraseña debe contener al menos una mayúscula, una minúscula y un número pe causaa.")]
         public required string Password { get; set; }
 
-        public IFormFile? ProfilePicture { get; set; }
     }
 }

@@ -1,0 +1,46 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card shadow-sm p-4">
+                    <h3 class="text-center mb-4">Registro de Usuario</h3>
+
+                    <form id="registerForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Nombre de usuario</label>
+                            <input type="text" id="username" class="form-control" placeholder="Ej. Juan Pérez" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Correo electrónico</label>
+                            <input type="email" id="email" class="form-control" placeholder="ejemplo@correo.com" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña</label>
+                            <input type="password" id="password" class="form-control" placeholder="********" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">Registrarse</button>
+                    </form>
+
+                    <div class="mt-3 text-center">
+                        <a href="index.html">¿Ya tienes cuenta? Inicia sesión</a>
+                    </div>
+
+                    <div id="registerAlert" class="alert alert-danger mt-3 d-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>

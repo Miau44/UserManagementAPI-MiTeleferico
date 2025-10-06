@@ -1,0 +1,30 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Perfil</title>
+</head>
+<body>
+    <h1>Perfil del USUARIOO</h1>
+    <p>Nombre: <span id="username"></span></p>
+    <p>Email: <span id="email"></span></p>
+    <p>Status: <span id="status"></span></p>
+    <img id="profilePic" src="" alt="Foto de perfil" width="100" />
+
+    <h2>Editar Perfil</h2>
+    <form id="editProfileForm">
+        <label>Nuevo nombre:</label><br>
+        <input type="text" id="newUsername" name="Username" placeholder="Nuevo nombre"><br><br>
+
+        <label>Nuevo correo:</label><br>
+        <input type="email" id="newEmail" name="Email" placeholder="Nuevo correo"><br><br>
+
+        <label>Nueva foto de perfil:</label><br>
+        <input type="file" id="newProfilePicture" name="ProfilePicture" accept="image/*"><br><br>
+
+        <button type="button" id="updateBtn">Actualizar Perfil</button>
+    </form>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

@@ -8,8 +8,9 @@ namespace UserManagementAPI.DTOs
         [StringLength(50)]
         public required string? Username { get; set; }
 
-        [Required(ErrorMessage = "No se puede dejar nada en blanco rey :c")]
-        public required string? Status { get; set; }
+        [Required(ErrorMessage = "El correo es obligatorio")]
+        [EmailAddress(ErrorMessage = "Correo no válido")]
+        public required string? Email { get; set; }
 
         public IFormFile? ProfilePicture { get; set; } // Para archivos subidos desde un formulario multipart
     }

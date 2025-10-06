@@ -31,6 +31,8 @@ builder.Services.AddSingleton(cloudinary);
 // ============================
 builder.Services.AddScoped<EmailService>();
 
+builder.Services.AddScoped<AuditService>();// Servicio de auditoría
+
 // ============================
 // Configuración de JWT Authentication
 // ============================
@@ -112,6 +114,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+
 var app = builder.Build();
 
 // ============================
@@ -142,6 +145,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// =======================================
+// Servir archivos estáticos (wwwroot)
+// =======================================
+app.UseDefaultFiles();   // sirve index.html por defecto
+app.UseStaticFiles();    // sirve css/js de wwwroot
+
 
 app.UseAuthentication(); // Debe ir antes de UseAuthorization
 app.UseAuthorization();

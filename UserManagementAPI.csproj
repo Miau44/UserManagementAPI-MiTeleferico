@@ -22,4 +22,10 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="ClientApp\" />
+    <Folder Include="wwwroot\images\" />
+    <Folder Include="wwwroot\partials\" />
+  </ItemGroup>
+
 </Project>
