@@ -217,6 +217,31 @@ namespace UserManagementAPI.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("UserManagementAPI.Models.UserTest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RespuestasJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserTests");
+                });
+
             modelBuilder.Entity("UserManagementAPI.Models.Zona", b =>
                 {
                     b.Property<int>("ZonaId")
@@ -254,6 +279,17 @@ namespace UserManagementAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("UserManagementAPI.Models.UserTest", b =>
+                {
+                    b.HasOne("UserManagementAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("UserManagementAPI.Models.Role", b =>

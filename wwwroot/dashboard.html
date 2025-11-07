@@ -3,27 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <title>Dashboard - Perfil</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
 </head>
 <body>
-    <h1>Perfil del USUARIOO</h1>
-    <p>Nombre: <span id="username"></span></p>
-    <p>Email: <span id="email"></span></p>
-    <p>Status: <span id="status"></span></p>
-    <img id="profilePic" src="" alt="Foto de perfil" width="100" />
+    <div class="container mt-4">
+        <h1>Perfil del Usuario</h1>
+        <p>Nombre: <span id="username"></span></p>
+        <p>Email: <span id="email"></span></p>
+        <p>Status: <span id="status"></span></p>
+        <img id="profilePic" src="" alt="Foto de perfil" width="100" />
 
-    <h2>Editar Perfil</h2>
-    <form id="editProfileForm">
-        <label>Nuevo nombre:</label><br>
-        <input type="text" id="newUsername" name="Username" placeholder="Nuevo nombre"><br><br>
+        <h2>Editar </h2>
+        <form id="editProfileForm">
+            <label>Nuevo nombre:</label><br>
+            <input type="text" id="newUsername" name="Username" placeholder="Nuevo nombre"><br><br>
 
-        <label>Nuevo correo:</label><br>
-        <input type="email" id="newEmail" name="Email" placeholder="Nuevo correo"><br><br>
+            <label>Nuevo correo:</label><br>
+            <input type="email" id="newEmail" name="Email" placeholder="Nuevo correo"><br><br>
 
-        <label>Nueva foto de perfil:</label><br>
-        <input type="file" id="newProfilePicture" name="ProfilePicture" accept="image/*"><br><br>
+            <label>Nueva foto de perfil:</label><br>
+            <input type="file" id="newProfilePicture" name="ProfilePicture" accept="image/*"><br><br>
 
-        <button type="button" id="updateBtn">Actualizar Perfil</button>
-    </form>
+            <button type="button" id="updateBtn" class="btn btn-primary">Actualizar Perfil</button>
+        </form>
+
+        <hr>
+
+        <!-- Botón para ir al test -->
+        <div class="container mt-4">
+            <h2>Bienvenido al Dashboard</h2>
+
+            <p>Desde aquí puedes acceder a todas las funciones del sistema.</p>
+
+            <!-- Botón para ir al test -->
+            <a href="test.html" class="btn btn-warning mt-3 w-100">
+                👉 Realizar Test de Kostick
+            </a>
+
+        </div>
+
+    </div>
 
     <script src="js/dashboard.js"></script>
 </body>

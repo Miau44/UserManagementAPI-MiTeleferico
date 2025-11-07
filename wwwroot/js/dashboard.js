@@ -29,7 +29,6 @@ async function loadProfile() {
             if (data.profilePictureUrl) {
                 document.getElementById('profilePic').src = data.profilePictureUrl;
             }
-
         } else {
             alert(data.message || 'Error al cargar el perfil');
             window.location.href = 'index.html';
@@ -71,7 +70,7 @@ async function updateProfile(e) {
 
         if (res.ok) {
             alert('Perfil actualizado correctamente');
-            await loadProfile(); // refresca los datos
+            await loadProfile();
             document.getElementById('editProfileForm').reset();
         } else {
             alert('Error al actualizar perfil: ' + text);
@@ -81,17 +80,3 @@ async function updateProfile(e) {
         alert('Error de conexión con el servidor');
     }
 }
-
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("🚀 DOM completamente cargado");
-    loadProfile();
-
-    const btn = document.getElementById('updateBtn');
-    if (btn) {
-        console.log("🎯 Botón de actualizar encontrado");
-        btn.addEventListener('click', updateProfile);
-    } else {
-        console.error("❌ No se encontró el botón #updateBtn en el DOM");
-    }
-});

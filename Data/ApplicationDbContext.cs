@@ -15,9 +15,10 @@ namespace UserManagementAPI.Data
         public DbSet<LoginAttempt> LoginAttempts { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<UserTest> UserTests { get; set; }
         public DbSet<Estacion> Estaciones { get; set; } = null!;
         public DbSet<Zona> Zonas { get; set; } = null!;
-
+        public DbSet<TestAnswer> TestAnswers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
